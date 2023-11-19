@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\TransactionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,9 +20,11 @@ use App\Http\Controllers\UserController;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
-Route::middleware([])->group(function () {
-    Route::post('/accounts/{userId}', [AccountController::class, 'createAccount']);
-    Route::delete('/accounts/{userId}', [AccountController::class, 'deleteAccount']);
-    Route::get('/accounts/{userId}', [AccountController::class, 'getUserAccounts']);
-    Route::get('/users', [UserController::class, 'getAllUsers']);
-});
+
+Route::post('/accounts/{userId}', [AccountController::class, 'createAccount']);
+Route::delete('/accounts/{userId}', [AccountController::class, 'deleteAccount']);
+Route::get('/accounts/{userId}', [AccountController::class, 'getUserAccounts']);
+Route::get('/users', [UserController::class, 'getAllUsers']);
+Route::get('/transactions', [TransactionController::class, 'index']);
+Route::post('/transactions', [TransactionController::class, 'store']);
+Route::get('/transactions/{accountId}', [TransactionController::class, 'getTransactionsForAccount']);
