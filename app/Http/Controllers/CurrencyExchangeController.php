@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 
 class CurrencyExchangeController extends Controller
 {
-    public function getTargetAmount($currency, $targetCurrency, $amount, $date)
+    public function getTargetAmount($currency, $currencyFrom, $amount, $date)
     {
         $apiKey = env("API_LAYER_KEY");
 
@@ -15,8 +15,8 @@ class CurrencyExchangeController extends Controller
             'apikey' => $apiKey
         ])
         ->get("https://api.apilayer.com/exchangerates_data/convert",[
-            'to' => $targetCurrency,
-            'from' => $currency,
+            'to' => $currency,
+            'from' => $currencyFrom,
             'amount' => $amount,
             'date' => $date
         ]);

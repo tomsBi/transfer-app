@@ -47,15 +47,14 @@ class TransactionController extends Controller
             return response()->json(['error' => 'Insufficient funds in the creditor account.'], 400);
         }
 
-        if (!$debtorAccount->checkCurrency($currency)) {
-            $targetCurrency = $debtorAccount->getCurrency();
-            $targetAmount = (new CurrencyExchangeController)->getTargetAmount($currency, $targetCurrency, $amount, date("Y-m-d"));
-        } else {
-            $targetAmount = $amount;
-            $targetCurrency = $currency;
+        if ($debtorAccount->checkCurrency($currency)) {
+            $currencyFrom = $creditorAccount->getCurrency();
+            $targetAmount = (new CurrencyExchangeController)->getTargetAmount($currency, $currencyFrom, $amount, date("Y-m-d"));
+        } elseif (!$debtorAccount->checkCurrency($currency)) {
+            return response()->json(['error' => 'Wrong currency.'], 400);
         }
 
-        return $this->commitTransaction($creditorAccount, $debtorAccount, $reference, $currency, $amount, $targetAmount, $targetCurrency);
+        return $this->commitTransaction($creditorAccount, $debtorAccount, $reference, $currency, $amount, $targetAmount);
     }
 
     private function validateTransactionRequest(Request $request)
@@ -76,7 +75,6 @@ class TransactionController extends Controller
         $currency,
         $amount,
         $targetAmount,
-        $targetCurrency
         )
     {
         DB::beginTransaction();
@@ -90,8 +88,7 @@ class TransactionController extends Controller
             'reference' => $reference,
             'currency' => $currency,
             'amount' => $amount,
-            'targetAmount' => $targetAmount,
-            'targetCurrency' => $targetCurrency
+            'targetAmount' => $targetAmount
             ]);
 
             // Update the balances of the creditor and debtor accounts
