@@ -22,14 +22,11 @@ class TransactionController extends Controller
 
     public function store(Request $request)
     {
-        // Validate the request data
-        $validator = Validator::make($request->all(), [
-            'creditor_account_id' => 'required|uuid',
-            'debtor_account_id' => 'required|uuid',
-            'reference' => 'required|string',
-            'currency' => 'required|string',
-            'amount' => 'required|numeric|min:0.01',
-        ]);
+        $currency = $request->input('currency');
+        $amount = $request->input('amount');
+        $reference = $request->input('reference');
+        
+        $validator = $this->validateTransactionRequest($request);
 
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 400);
@@ -42,26 +39,60 @@ class TransactionController extends Controller
             return response()->json(['error' => 'One or more accounts not found.'], 404);
         }
 
-        if (!$creditorAccount->checkFunds($request->input('amount'))) {
+        if (!$creditorAccount->checkFunds($amount)) {
             return response()->json(['error' => 'Insufficient funds in the creditor account.'], 400);
         }
 
+        if (!$debtorAccount->checkCurrency($currency)) {
+            $targetCurrency = $debtorAccount->getCurrency();
+            $targetAmount = (new CurrencyExchangeController)->getTargetAmount($currency, $targetCurrency, $amount, date("Y-m-d"));
+        } else {
+            $targetAmount = $amount;
+            $targetCurrency = $currency;
+        }
+
+        return $this->commitTransaction($creditorAccount, $debtorAccount, $reference, $currency, $amount, $targetAmount, $targetCurrency);
+    }
+
+    private function validateTransactionRequest(Request $request)
+    {
+        return validator($request->all(), [
+            'creditor_account_id' => 'required|uuid',
+            'debtor_account_id' => 'required|uuid',
+            'reference' => 'required|string',
+            'currency' => 'required|string',
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+    }
+
+    private function commitTransaction(
+        $creditorAccount,
+        $debtorAccount,
+        $reference,
+        $currency,
+        $amount,
+        $targetAmount,
+        $targetCurrency
+        )
+    {
         DB::beginTransaction();
 
         // Create the transaction
         try {
         $transaction = Transaction::create([
             'id' => Uuid::uuid4()->toString(),
-            'creditor_account_id' => $request->input('creditor_account_id'),
-            'debtor_account_id' => $request->input('debtor_account_id'),
-            'reference' => $request->input('reference'),
-            'currency' => $request->input('currency'),
-            'amount' => $request->input('amount'),
+            'creditor_account_id' => $creditorAccount->getId(),
+            'debtor_account_id' => $debtorAccount->getId(),
+            'reference' => $reference,
+            'currency' => $currency,
+            'amount' => $amount,
+            'targetAmount' => $targetAmount,
+            'targetCurrency' => $targetCurrency
             ]);
 
             // Update the balances of the creditor and debtor accounts
-            $creditorAccount->removeMoney($request->input('amount'));
-            $debtorAccount->addMoney($request->input('amount'));
+            $creditorAccount->removeMoney($amount);
+            $debtorAccount->addMoney($targetAmount);
 
             DB::commit();
 

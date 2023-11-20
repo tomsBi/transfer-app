@@ -37,7 +37,7 @@ class Account extends Model
     }
 
     /**
-     * Retrieve an account based on user ID and currency.
+     * Retrieve an account based on ID.
      *
      * @param string $userId
      * @param string $currency
@@ -82,5 +82,15 @@ class Account extends Model
     public function checkCurrency($currency)
     {
         return $this->currency === $currency;
+    }
+    
+    public function getCurrency()
+    {
+        return $this->currency;
+    }
+
+    public function getId()
+    {
+        return $this->id;
     }
 }
