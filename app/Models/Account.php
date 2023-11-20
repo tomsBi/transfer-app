@@ -43,7 +43,7 @@ class Account extends Model
      * @param string $currency
      * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Eloquent\Model|object|null
      */
-    public static function retrieveAccount($id)
+    public static function getAccount($id)
     {
         return self::where('id', $id)
             ->first();
@@ -55,7 +55,7 @@ class Account extends Model
      * @param float $amount
      * @return void
      */
-    public function addMoney($amount)
+    public function addAmount($amount)
     {
         $this->balance += $amount;
         $this->save();
@@ -67,7 +67,7 @@ class Account extends Model
      * @param float $amount
      * @return void
      */
-    public function removeMoney($amount)
+    public function removeAmount($amount)
     {
         $this->balance -= $amount;
         $this->save();

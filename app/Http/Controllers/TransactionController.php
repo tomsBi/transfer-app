@@ -32,8 +32,12 @@ class TransactionController extends Controller
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        $creditorAccount = Account::retrieveAccount($request->input('creditor_account_id'));
-        $debtorAccount = Account::retrieveAccount($request->input('debtor_account_id'));
+        $creditorAccount = Account::getAccount($request->input('creditor_account_id'));
+        $debtorAccount = Account::getAccount($request->input('debtor_account_id'));
+
+        if ($creditorAccount->getId() === $debtorAccount->getId()) {
+            return response()->json(['error' => 'Transaction between the same account is not allowed.'], 403);
+        }
 
         if (!$creditorAccount || !$debtorAccount) {
             return response()->json(['error' => 'One or more accounts not found.'], 404);
@@ -91,8 +95,8 @@ class TransactionController extends Controller
             ]);
 
             // Update the balances of the creditor and debtor accounts
-            $creditorAccount->removeMoney($amount);
-            $debtorAccount->addMoney($targetAmount);
+            $creditorAccount->removeAmount($amount);
+            $debtorAccount->addAmount($targetAmount);
 
             DB::commit();
 
@@ -113,6 +117,11 @@ class TransactionController extends Controller
             'account_id' => 'required|uuid',
         ]);
 
+        $accountExists = Account::where('id', $accountId)->exists();
+        if (!$accountExists){
+            return response()->json(['error' => 'Account not found.'], 404);
+        }
+
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 400);
         }
@@ -122,11 +131,23 @@ class TransactionController extends Controller
 
         // Retrieve transactions for the specified account
         $transactions = Transaction::where('creditor_account_id', $accountId)
+            ->orWhere('debtor_account_id', $accountId)
             ->orderBy('created_at', 'desc')
             ->offset($offset)
             ->limit($limit)
             ->get();
+        
+        $outgoingTransactions = $transactions->filter(function ($transaction) use ($accountId) {
+            return $transaction->creditor_account_id == $accountId;
+        });
+            
+        $incomingTransactions = $transactions->filter(function ($transaction) use ($accountId) {
+            return $transaction->debtor_account_id == $accountId;
+        });
 
-        return response()->json(['transactions' => $transactions]);
+        return response()->json([
+            'outgoingTransactions' => $outgoingTransactions,
+            'incomingTransactions' => $incomingTransactions,
+        ]);
     }
 }
