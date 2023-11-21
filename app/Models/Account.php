@@ -43,15 +43,35 @@ class Account extends Model
     }
 
     /**
-     * Retrieve an account based on ID.
+     * Retrieve an debtor account based on ID.
      *
      * @param string $id
      * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Eloquent\Model|object|null
      * @throws AccountException if no Account found
      */
-    public static function getAccount($id)
+    public static function getDebtorAccount($id)
     {
-        $account = self::where('id', $id)->first();
+        $account = self::where('id', $id)
+        ->first();
+        if($account){
+            return $account;
+        }
+        throw AccountException::noAccountsFoundException($id);
+    }
+
+    /**
+     * Retrieve an account account based on ID and user ID.
+     *
+     * @param string $id
+     * @param string $userId
+     * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Eloquent\Model|object|null
+     * @throws AccountException if no Account found
+     */
+    public static function getAccount($id, $userId)
+    {
+        $account = self::where('id', $id)
+        ->where('user_id', $userId)
+        ->first();
         if($account){
             return $account;
         }

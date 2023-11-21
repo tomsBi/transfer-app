@@ -14,6 +14,7 @@ use App\Exceptions\TransactionException;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Rules\AllowedCurrencies;
 use App\Services\TransactionService;
+use Illuminate\Support\Facades\Auth;
 
 class TransactionController extends Controller
 {
@@ -25,24 +26,18 @@ class TransactionController extends Controller
         $this->transactionService = $transactionService;
     }
 
-    public function index()
-    {
-        // Retrieve all transactions
-        $transactions = Transaction::all();
-
-        return response()->json(['transactions' => $transactions]);
-    }
-
     public function create(StoreTransactionRequest $request,)
     {
+        $user = Auth::user();
+
         validator($request->all());
 
         $currency = $request->input('currency');
         $amount = $request->input('amount');
         $reference = $request->input('reference');
 
-        $creditorAccount = Account::getAccount($request->input('creditor_account_id'));
-        $debtorAccount = Account::getAccount($request->input('debtor_account_id'));
+        $creditorAccount = Account::getAccount($request->input('creditor_account_id'), $user->id);
+        $debtorAccount = Account::getDebtorAccount($request->input('debtor_account_id'));
 
         $this->checkIfDiffAccounts($creditorAccount->getId(), $debtorAccount->getId());
 
@@ -65,6 +60,8 @@ class TransactionController extends Controller
 
     public function getTransactionsForAccount($accountId, Request $request)
     {
+        $user = Auth::user();
+
         // Validate the account ID
         $validator = Validator::make(['account_id' => $accountId], [
             'account_id' => 'required|uuid',
@@ -74,7 +71,7 @@ class TransactionController extends Controller
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        Account::getAccount($accountId);
+        Account::getAccount($accountId, $user->id);
 
         $offset = $request->query('offset', 0);
         $limit = $request->query('limit', 10);

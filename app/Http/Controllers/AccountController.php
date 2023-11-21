@@ -9,6 +9,7 @@ use Illuminate\Routing\Controller as BaseController;
 use Ramsey\Uuid\Uuid;
 use App\Http\Requests\StoreAccountRequest;
 use App\Services\AccountService;
+use Illuminate\Support\Facades\Auth;
 
 class AccountController extends BaseController
 {
@@ -25,20 +26,24 @@ class AccountController extends BaseController
         return $this->belongsTo(User::class);
     }
 
-    public function getUserAccounts($userId)
+    public function getUserAccounts()
     {
-        User::getUser($userId);
+        $user = Auth::user();
 
-        $userAccounts = Account::where('user_id', $userId)->get();
+        User::getUser($user->id);
+
+        $userAccounts = Account::where('user_id', $user->id)->get();
 
         return response()->json(['user_accounts' => $userAccounts]);
     }
 
     public function createAccount(StoreAccountRequest $request)
     {
+        $user = Auth::user();
+
         validator($request->all());
 
-        $account = $this->accountService->store($request);
+        $account = $this->accountService->store($request, $user->id);
 
         return response()->json(['message' => 'Account created successfully', 'account' => $account]);
     }
