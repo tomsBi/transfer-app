@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Exceptions\AccountException;
+use App\Exceptions\TransactionException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Ramsey\Uuid\Uuid;
@@ -30,23 +32,30 @@ class Account extends Model
      *
      * @param float $amount
      * @return bool
+     * @throws AccountException if insufficient funds for Account
      */
     public function checkFunds($amount)
     {
-        return $this->balance >= $amount;
+        if($this->balance >= $amount){
+            return true;
+        }
+        throw AccountException::insufficientFundsException();
     }
 
     /**
      * Retrieve an account based on ID.
      *
-     * @param string $userId
-     * @param string $currency
+     * @param string $id
      * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Eloquent\Model|object|null
+     * @throws AccountException if no Account found
      */
     public static function getAccount($id)
     {
-        return self::where('id', $id)
-            ->first();
+        $account = self::where('id', $id)->first();
+        if($account){
+            return $account;
+        }
+        throw AccountException::noAccountsFoundException($id);
     }
 
      /**
@@ -78,10 +87,14 @@ class Account extends Model
      *
      * @param string $currency
      * @return bool
+     * @throws TransactionException if currency is wrong
      */
     public function checkCurrency($currency)
     {
-        return $this->currency === $currency;
+        if($this->currency === $currency) {
+            return true;
+        }
+        throw TransactionException::wrongCurrencyException();
     }
     
     public function getCurrency()
@@ -93,4 +106,6 @@ class Account extends Model
     {
         return $this->id;
     }
+
+
 }

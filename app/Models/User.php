@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Exceptions\UserException;
 
 class User extends Authenticatable
 {
@@ -51,5 +52,21 @@ class User extends Authenticatable
     public function accounts()
     {
         return $this->hasMany(Account::class);
+    }
+
+    /**
+     * Retrieve an user based on ID.
+     *
+     * @param string $id
+     * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Eloquent\Model|object|null
+     * @throws UserException if no User found
+     */
+    public static function getUser($id)
+    {
+        $user = self::where('id', $id)->first();
+        if($user){
+            return $user;
+        }
+        throw UserException::noUserFoundException($id);
     }
 }

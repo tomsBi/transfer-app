@@ -7,9 +7,18 @@ use App\Models\User;
 use App\Models\Account;
 use Illuminate\Routing\Controller as BaseController;
 use Ramsey\Uuid\Uuid;
+use App\Http\Requests\StoreAccountRequest;
+use App\Services\AccountService;
 
 class AccountController extends BaseController
 {
+
+    private $accountService;
+
+    public function __construct(AccountService $accountService)
+    {
+        $this->accountService = $accountService;
+    }
 
     public function user()
     {
@@ -18,57 +27,19 @@ class AccountController extends BaseController
 
     public function getUserAccounts($userId)
     {
-        // Validate that the user exists
-        $userExists = User::where('id', $userId)->exists();
-        if (!$userExists){
-            return response()->json(['error' => 'User not found.'], 404);
-        }
+        User::getUser($userId);
 
         $userAccounts = Account::where('user_id', $userId)->get();
 
         return response()->json(['user_accounts' => $userAccounts]);
     }
 
-    public function createAccount(Request $request, $userId)
+    public function createAccount(StoreAccountRequest $request)
     {
-        $request->validate([
-            'currency' => 'required|in:USD,EUR,GBP',
-            'balance' => 'required|numeric|min:0',
-        ]);
+        validator($request->all());
 
-        $account = Account::create([
-            'id' => Uuid::uuid4()->toString(),
-            'user_id' => $userId,
-            'currency' => $request->input('currency'),
-            'balance' => $request->input('balance'),
-        ]);
+        $account = $this->accountService->store($request);
 
         return response()->json(['message' => 'Account created successfully', 'account' => $account]);
-    }
-
-    public function deleteAccount(Request $request, $userId)
-    {
-        // Validate that the user exists
-        $user = User::find($userId);
-        if (!$user) {
-            return response()->json(['error' => 'User not found.'], 404);
-        }
-
-        // Validate that the account ID is present in the request body
-        $accountId = $request->input('account_id');
-        if (!$accountId) {
-            return response()->json(['error' => 'Account ID is required in the request body'], 400);
-        }
-
-        // Validate that the account belongs to the user
-        $account = Account::where('id', $accountId)->where('user_id', $userId)->first();
-        if (!$account) {
-            return response()->json(['error' => 'Account not found or does not belong to the user'], 404);
-        }
-
-        // Perform the deletion
-        $account->delete();
-
-        return response()->json(['message' => 'Account deleted successfully']);
     }
 }
