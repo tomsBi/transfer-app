@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\AccountException;
 use App\Models\Transaction;
 use App\Models\Account;
 use Exception;
@@ -9,9 +10,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Ramsey\Uuid\Uuid;
 use Illuminate\Support\Facades\DB;
+use App\Exceptions\TransactionException;
+use App\Http\Requests\StoreTransactionRequest;
+use App\Rules\AllowedCurrencies;
+use App\Services\TransactionService;
 
 class TransactionController extends Controller
 {
+
+    private $transactionService;
+
+    public function __construct(TransactionService $transactionService)
+    {
+        $this->transactionService = $transactionService;
+    }
+
     public function index()
     {
         // Retrieve all transactions
@@ -20,91 +33,34 @@ class TransactionController extends Controller
         return response()->json(['transactions' => $transactions]);
     }
 
-    public function store(Request $request)
+    public function create(StoreTransactionRequest $request,)
     {
+        validator($request->all());
+
         $currency = $request->input('currency');
         $amount = $request->input('amount');
         $reference = $request->input('reference');
-        
-        $validator = $this->validateTransactionRequest($request);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
-        }
 
         $creditorAccount = Account::getAccount($request->input('creditor_account_id'));
         $debtorAccount = Account::getAccount($request->input('debtor_account_id'));
 
-        if ($creditorAccount->getId() === $debtorAccount->getId()) {
-            return response()->json(['error' => 'Transaction between the same account is not allowed.'], 403);
-        }
+        $this->checkIfDiffAccounts($creditorAccount->getId(), $debtorAccount->getId());
 
-        if (!$creditorAccount || !$debtorAccount) {
-            return response()->json(['error' => 'One or more accounts not found.'], 404);
-        }
-
-        if (!$creditorAccount->checkFunds($amount)) {
-            return response()->json(['error' => 'Insufficient funds in the creditor account.'], 400);
-        }
+        $creditorAccount->checkFunds($amount);
 
         if ($debtorAccount->checkCurrency($currency)) {
             $currencyFrom = $creditorAccount->getCurrency();
             $targetAmount = (new CurrencyExchangeController)->getTargetAmount($currency, $currencyFrom, $amount, date("Y-m-d"));
-        } elseif (!$debtorAccount->checkCurrency($currency)) {
-            return response()->json(['error' => 'Wrong currency.'], 400);
-        }
+        } 
 
-        return $this->commitTransaction($creditorAccount, $debtorAccount, $reference, $currency, $amount, $targetAmount);
-    }
-
-    private function validateTransactionRequest(Request $request)
-    {
-        return validator($request->all(), [
-            'creditor_account_id' => 'required|uuid',
-            'debtor_account_id' => 'required|uuid',
-            'reference' => 'required|string',
-            'currency' => 'required|string',
-            'amount' => 'required|numeric|min:0.01',
-        ]);
-    }
-
-    private function commitTransaction(
-        $creditorAccount,
-        $debtorAccount,
-        $reference,
-        $currency,
-        $amount,
-        $targetAmount,
-        )
-    {
-        DB::beginTransaction();
-
-        // Create the transaction
-        try {
-        $transaction = Transaction::create([
-            'id' => Uuid::uuid4()->toString(),
-            'creditor_account_id' => $creditorAccount->getId(),
-            'debtor_account_id' => $debtorAccount->getId(),
-            'reference' => $reference,
-            'currency' => $currency,
-            'amount' => $amount,
-            'targetAmount' => $targetAmount
-            ]);
-
-            // Update the balances of the creditor and debtor accounts
-            $creditorAccount->removeAmount($amount);
-            $debtorAccount->addAmount($targetAmount);
-
-            DB::commit();
-
-            return response()->json(['transaction' => $transaction], 201);
-
-        } catch (Exception $e) {
-            DB::rollback();
-        
-            // Handle the exception or log the error
-            return response()->json(['error' => 'Transaction failed.'], 500);
-        }
+        return $this->transactionService->store(
+            $creditorAccount,
+            $debtorAccount,
+            $reference,
+            $currency,
+            $amount,
+            $targetAmount
+        );
     }
 
     public function getTransactionsForAccount($accountId, Request $request)
@@ -114,25 +70,16 @@ class TransactionController extends Controller
             'account_id' => 'required|uuid',
         ]);
 
-        $accountExists = Account::where('id', $accountId)->exists();
-        if (!$accountExists){
-            return response()->json(['error' => 'Account not found.'], 404);
-        }
-
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 400);
         }
 
+        Account::getAccount($accountId);
+
         $offset = $request->query('offset', 0);
         $limit = $request->query('limit', 10);
 
-        // Retrieve transactions for the specified account
-        $transactions = Transaction::where('creditor_account_id', $accountId)
-            ->orWhere('debtor_account_id', $accountId)
-            ->orderBy('created_at', 'desc')
-            ->offset($offset)
-            ->limit($limit)
-            ->get();
+        $transactions = (new TransactionService)->getAllTransactionsByAccountId($accountId, $offset, $limit);
         
         $outgoingTransactions = $transactions->filter(function ($transaction) use ($accountId) {
             return $transaction->creditor_account_id == $accountId;
@@ -146,5 +93,13 @@ class TransactionController extends Controller
             'outgoingTransactions' => $outgoingTransactions,
             'incomingTransactions' => $incomingTransactions,
         ]);
+    }
+
+    private function checkIfDiffAccounts($creditorAccountId, $debtorAccountId)
+    {
+        if($creditorAccountId === $debtorAccountId) {
+            throw TransactionException::sameAccountException();
+        }
+        return true;
     }
 }
