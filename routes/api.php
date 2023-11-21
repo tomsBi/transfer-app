@@ -21,9 +21,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::post('/accounts/create', [AccountController::class, 'createAccount']);
-Route::get('/accounts/{userId}', [AccountController::class, 'getUserAccounts']);
-Route::get('/users', [UserController::class, 'getAllUsers']);
-Route::get('/transactions', [TransactionController::class, 'index']);
-Route::post('/transactions', [TransactionController::class, 'create']);
-Route::get('/transactions/{accountId}', [TransactionController::class, 'getTransactionsForAccount']);
+Route::post('/register', [UserController::class, 'register']);
+Route::post('/accounts/create', [AccountController::class, 'createAccount'])->middleware('auth:sanctum');
+Route::get('/accounts', [AccountController::class, 'getUserAccounts'])->middleware('auth:sanctum');
+Route::get('/users', [UserController::class, 'getAllUsers'])->middleware('auth:sanctum');
+Route::post('/transactions', [TransactionController::class, 'create'])->middleware('auth:sanctum');
+Route::get('/transactions/{accountId}', [TransactionController::class, 'getTransactionsForAccount'])->middleware('auth:sanctum');
