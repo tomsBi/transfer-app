@@ -7,11 +7,11 @@ use Ramsey\Uuid\Uuid;
 
 class AccountService
 {
-    public function store($request)
+    public function store($request, $userId)
     {
         return Account::create([
             'id' => Uuid::uuid4()->toString(),
-            'user_id' => $request->input('user_id'),
+            'user_id' => $userId,
             'currency' => $request->input('currency'),
             'balance' => $request->input('balance'),
         ]);

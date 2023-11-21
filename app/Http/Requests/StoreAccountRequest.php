@@ -23,7 +23,6 @@ class StoreAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_id' => 'required|uuid',
             'currency' => ['required', new AllowedCurrencies],
             'balance' => 'required|numeric|min:0',
         ];
