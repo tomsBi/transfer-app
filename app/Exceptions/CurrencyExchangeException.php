@@ -2,8 +2,6 @@
 
 namespace App\Exceptions;
 
-use Exception;
-
 class CurrencyExchangeException extends CustomException
 {
     public static function ServiceUnavailableException(): CurrencyExchangeException

@@ -2,7 +2,6 @@
 
 namespace App\Exceptions;
 
-
 class TransactionException extends CustomException
 {
     public static function sameAccountException(): TransactionException
