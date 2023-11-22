@@ -2,17 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\AccountException;
-use App\Models\Transaction;
 use App\Models\Account;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Ramsey\Uuid\Uuid;
-use Illuminate\Support\Facades\DB;
 use App\Exceptions\TransactionException;
 use App\Http\Requests\StoreTransactionRequest;
-use App\Rules\AllowedCurrencies;
 use App\Services\TransactionService;
 use Illuminate\Support\Facades\Auth;
 
@@ -45,7 +39,10 @@ class TransactionController extends Controller
 
         if ($debtorAccount->checkCurrency($currency)) {
             $currencyFrom = $creditorAccount->getCurrency();
-            $targetAmount = (new CurrencyExchangeController)->getTargetAmount($currency, $currencyFrom, $amount, date("Y-m-d"));
+            if($currency != $currencyFrom) {
+                $targetAmount = (new CurrencyExchangeController)->getTargetAmount($currency, $currencyFrom, $amount, date("Y-m-d"));
+            }
+            $targetAmount = $amount;
         } 
 
         return $this->transactionService->store(
