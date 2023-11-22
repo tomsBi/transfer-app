@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Account;
 use Illuminate\Routing\Controller as BaseController;
-use Ramsey\Uuid\Uuid;
 use App\Http\Requests\StoreAccountRequest;
 use App\Services\AccountService;
 use Illuminate\Support\Facades\Auth;
