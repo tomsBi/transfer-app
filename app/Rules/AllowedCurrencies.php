@@ -7,7 +7,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 
 class AllowedCurrencies implements ValidationRule
 {
-    private const ALLOWED_CURRENCIES = [
+    protected const ALLOWED_CURRENCIES = [
         "EUR",
         "USD",
         "GBP",
@@ -27,5 +27,10 @@ class AllowedCurrencies implements ValidationRule
     public function message()
     {
         return 'Unsupported :atribute.';
+    }
+
+    public static function getAllowedCurrencies(): array
+    {
+        return self::ALLOWED_CURRENCIES;
     }
 }

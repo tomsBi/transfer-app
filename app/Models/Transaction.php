@@ -21,6 +21,5 @@ class Transaction extends Model
         'currency',
         'reference',
         'targetAmount',
-        'targetCurrency',
     ];
 }

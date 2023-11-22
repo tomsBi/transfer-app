@@ -2,9 +2,6 @@
 
 namespace App\Exceptions;
 
-use App\Models\Account;
-use Exception;
-
 class AccountException extends CustomException
 {
     public static function insufficientFundsException(): AccountException

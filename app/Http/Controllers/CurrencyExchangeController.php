@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Exceptions\CurrencyExchangeException;
-use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 class CurrencyExchangeController extends Controller
 {
